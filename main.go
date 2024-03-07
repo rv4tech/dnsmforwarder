@@ -18,6 +18,7 @@ import (
 var (
 	addr          string
 	dnsAddr       string
+	dnsTimeout    int
 	dnsRewriteTTL int
 	dnsCacheTTL   int
 )
@@ -34,6 +35,7 @@ func init() {
 	flag.StringVar(&dnsAddr, "listen-dns", ":10053", "addr:port to listen on")
 	flag.IntVar(&dnsRewriteTTL, "rewrite-ttl", 900, "rewrite records TTL (seconds), set zero to disable")
 	flag.IntVar(&dnsCacheTTL, "cache-ttl", 900, "internal cache TTL (seconds), set zero to disable")
+	flag.IntVar(&dnsTimeout, "upstream-timeout", 10, "upstream dns request timeout (seconds)")
 	flag.Parse()
 }
 

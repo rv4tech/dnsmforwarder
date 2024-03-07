@@ -1,13 +1,32 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
+	"time"
 
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/miekg/dns"
 )
+
+func removeECSOption(msg *dns.Msg) {
+	for i, extra := range msg.Extra {
+		if opt, ok := extra.(*dns.OPT); ok {
+			for j := len(opt.Option) - 1; j >= 0; j-- {
+				if _, ok := opt.Option[j].(*dns.EDNS0_SUBNET); ok {
+					// Remove the ECS option by filtering it out
+					opt.Option = append(opt.Option[:j], opt.Option[j+1:]...)
+				}
+			}
+			// If there are no more options left in the OPT record, remove the OPT record itself
+			if len(opt.Option) == 0 {
+				msg.Extra = append(msg.Extra[:i], msg.Extra[i+1:]...)
+			}
+		}
+	}
+}
 
 func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
 	qHash := ""
@@ -26,9 +45,11 @@ func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
 		}
 	}
 
-	// TODO: remove edns0
-	// TODO: context with timeout
-	resp, _, err := dnsClient.Exchange(req, server)
+	removeECSOption(req)
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dnsTimeout)*time.Second)
+	defer cancel()
+	resp, _, err := dnsClient.ExchangeContext(ctx, req, server)
 
 	if resp != nil && err == nil && dnsCache != nil {
 		m, err := resp.Pack()
