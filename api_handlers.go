@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dnsmforwarder/http_helpers"
 	"encoding/json"
 	"fmt"
 	"net/http"
@@ -22,26 +23,22 @@ func putUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 	var obj UpstreamModel
 	err := json.NewDecoder(r.Body).Decode(&obj)
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
-	logMsg(r, fmt.Sprintf("decoded object: %s", obj))
+	http_helpers.LogMsg(r, fmt.Sprintf("decoded object: %s", obj))
 
 	u, err := netip.ParseAddrPort(obj.Upstream)
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
 
 	Upstreams.Store(u, true)
 	resp := UpstreamModel{Upstream: u.String()}
-	logMsg(r, fmt.Sprintf("returning response: %s", resp))
+	http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		textError500(w, r, err.Error())
-	}
+	http_helpers.RetJSON(w, r, resp, http.StatusOK)
 }
 
 func getUpstreamsHandler(w http.ResponseWriter, r *http.Request) {
@@ -51,33 +48,25 @@ func getUpstreamsHandler(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, UpstreamModel{Upstream: k.String()})
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		textError500(w, r, err.Error())
-	}
+	http_helpers.RetJSON(w, r, resp, http.StatusOK)
 }
 
 func deleteUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 	u, err := netip.ParseAddrPort(chi.URLParam(r, "upstream"))
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
-	logMsg(r, fmt.Sprintf("decoded params: upstream=%s", u))
+	http_helpers.LogMsg(r, fmt.Sprintf("decoded params: upstream=%s", u))
 
 	_, ok := Upstreams.LoadAndDelete(u)
 	if ok {
 		resp := UpstreamModel{Upstream: u.String()}
-		logMsg(r, fmt.Sprintf("returning response: %s", resp))
+		http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			textError500(w, r, err.Error())
-		}
+		http_helpers.RetJSON(w, r, resp, http.StatusOK)
 	} else {
-		textError(w, r, "no such upstream: "+u.String(), http.StatusNotFound)
+		http_helpers.RetError(w, r, "no such upstream: "+u.String(), http.StatusNotFound)
 	}
 }
 
@@ -85,14 +74,14 @@ func putOriginHandler(w http.ResponseWriter, r *http.Request) {
 	var obj OriginModel
 	err := json.NewDecoder(r.Body).Decode(&obj)
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
-	logMsg(r, fmt.Sprintf("decoded object: %s", obj))
+	http_helpers.LogMsg(r, fmt.Sprintf("decoded object: %s", obj))
 
 	o, err := netip.ParseAddr(obj.IP)
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
 	// we don't know what address format will be in dns RemoteAddr and api
@@ -101,20 +90,16 @@ func putOriginHandler(w http.ResponseWriter, r *http.Request) {
 
 	u, err := netip.ParseAddrPort(obj.Upstream)
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
 
 	Origins.Store(o, u)
 
 	resp := OriginModel{IP: o.String(), Upstream: u.String()}
-	logMsg(r, fmt.Sprintf("returning response: %s", resp))
+	http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		textError500(w, r, err.Error())
-	}
+	http_helpers.RetJSON(w, r, resp, http.StatusOK)
 }
 
 func getOriginsHandler(w http.ResponseWriter, r *http.Request) {
@@ -124,32 +109,24 @@ func getOriginsHandler(w http.ResponseWriter, r *http.Request) {
 		resp = append(resp, OriginModel{IP: k.String(), Upstream: v.String()})
 	}
 
-	w.Header().Set("Content-Type", "application/json; charset=utf-8")
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		textError500(w, r, err.Error())
-	}
+	http_helpers.RetJSON(w, r, resp, http.StatusOK)
 }
 
 func deleteOriginHandler(w http.ResponseWriter, r *http.Request) {
 	o, err := netip.ParseAddr(chi.URLParam(r, "origin"))
 	if err != nil {
-		textError400(w, r, err.Error())
+		http_helpers.RetError400(w, r, err.Error())
 		return
 	}
-	logMsg(r, fmt.Sprintf("decoded params: origin=%s", o))
+	http_helpers.LogMsg(r, fmt.Sprintf("decoded params: origin=%s", o))
 
 	u, ok := Origins.LoadAndDelete(o)
 	if ok {
 		resp := OriginModel{IP: o.String(), Upstream: u.String()}
-		logMsg(r, fmt.Sprintf("returning response: %s", resp))
+		http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
 
-		w.Header().Set("Content-Type", "application/json; charset=utf-8")
-		w.WriteHeader(http.StatusOK)
-		if err := json.NewEncoder(w).Encode(resp); err != nil {
-			textError500(w, r, err.Error())
-		}
+		http_helpers.RetJSON(w, r, resp, http.StatusOK)
 	} else {
-		textError(w, r, "no such origin: "+o.String(), http.StatusNotFound)
+		http_helpers.RetError(w, r, "no such origin: "+o.String(), http.StatusNotFound)
 	}
 }

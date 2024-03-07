@@ -1,6 +1,7 @@
 package main
 
 import (
+	"dnsmforwarder/http_helpers"
 	"dnsmforwarder/rwmutex_map"
 	"flag"
 	"log"
@@ -50,10 +51,18 @@ func main() {
 	}()
 
 	r := chi.NewRouter()
-	r.Use(middleware.RequestID)
+	r.NotFound(http_helpers.NotFound)
+
+	r.Use(http_helpers.RequestID)
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 	r.Use(middleware.StripSlashes)
+	r.Use(middleware.AllowContentType(
+		"application/json",
+		// used for r.With(AllowContentType(...)).Patch():
+		// "application/merge-patch+json",
+		// "application/json-patch+json",
+	))
 
 	r.Route("/api/v1", func(r chi.Router) {
 		r.Put("/origins", putOriginHandler)
