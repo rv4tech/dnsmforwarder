@@ -18,7 +18,8 @@ var (
 )
 
 var (
-	Origins   *rwmutex_map.Map[netip.Addr, string]
+	Origins   *rwmutex_map.Map[netip.Addr, netip.AddrPort]
+	Upstreams *rwmutex_map.Map[netip.AddrPort, bool]
 	DNSClient *dns.Client
 )
 
@@ -29,7 +30,8 @@ func init() {
 }
 
 func main() {
-	Origins = rwmutex_map.New[netip.Addr, string]()
+	Origins = rwmutex_map.New[netip.Addr, netip.AddrPort]()
+	Upstreams = rwmutex_map.New[netip.AddrPort, bool]()
 
 	DNSClient = new(dns.Client)
 	// TODO: test with big req/resps coming from tcp (convert to udp+edns0?)
@@ -57,6 +59,9 @@ func main() {
 		r.Put("/origins", putOriginHandler)
 		r.Get("/origins", getOriginsHandler)
 		r.Delete("/origins/{origin}", deleteOriginHandler)
+
+		r.Put("/upstreams", putUpstreamHandler)
+		r.Get("/upstreams", getUpstreamsHandler)
 		r.Delete("/upstreams/{upstream}", deleteUpstreamHandler)
 	})
 

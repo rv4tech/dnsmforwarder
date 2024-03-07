@@ -23,7 +23,9 @@ func DNSReqHandler(w dns.ResponseWriter, req *dns.Msg) {
 	var respErr error
 
 	origin := CanonAddrFromStringSilent(w.RemoteAddr().String())
-	upstream, hasUpstream := Origins.Load(CanonAddrFromStringSilent(w.RemoteAddr().String()))
+	upstream, _ := Origins.Load(CanonAddrFromStringSilent(w.RemoteAddr().String()))
+	_, hasUpstream := Upstreams.Load(upstream)
+
 	reqId := fmt.Sprintf("%v/%v/%v", req.Id, origin, upstream)
 	log.Printf("[dns.reqid=%v] received", reqId)
 
@@ -32,7 +34,7 @@ func DNSReqHandler(w dns.ResponseWriter, req *dns.Msg) {
 	} else {
 		switch req.Opcode {
 		case dns.OpcodeQuery, dns.OpcodeIQuery:
-			resp, respErr = Lookup(upstream, req)
+			resp, respErr = Lookup(upstream.String(), req)
 		}
 	}
 
@@ -41,13 +43,16 @@ func DNSReqHandler(w dns.ResponseWriter, req *dns.Msg) {
 		log.Printf("[dns.reqid=%v] forward error: %v", reqId, respErr)
 	} else if resp != nil {
 		resp.SetReply(req)
+		for _, rr := range resp.Answer {
+			rr.Header().Ttl = 900
+		}
 	} else {
 		resp = new(dns.Msg).SetRcode(req, dns.RcodeNotImplemented)
 		log.Printf("[dns.reqid=%v] method not implemented: %v", reqId, dns.OpcodeToString[req.Opcode])
 	}
 
-	//log.Printf("[dns.reqid=%v] req:\n%s", reqId, req)
-	//log.Printf("[dns.reqid=%v] resp:\n%s", reqId, resp)
+	log.Printf("[dns.reqid=%v] req:\n%s", reqId, req)
+	log.Printf("[dns.reqid=%v] resp:\n%s", reqId, resp)
 
 	err := w.WriteMsg(resp)
 	if err != nil {
