@@ -74,7 +74,7 @@ func NotFound(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusNotFound)
 	// json format for consistency
-	w.Write([]byte(`{"` + ErrorMsgKey + `": "404 page not found"}`))
+	_, _ = w.Write([]byte(`{"` + ErrorMsgKey + `": "404 page not found"}`))
 	// don't log 404, don't panic
 }
 
