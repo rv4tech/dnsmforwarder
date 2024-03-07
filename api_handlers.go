@@ -34,7 +34,7 @@ func putUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Upstreams.Store(u, true)
+	nsUpstreams.Store(u, true)
 	resp := UpstreamModel{Upstream: u.String()}
 	http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
 
@@ -42,7 +42,7 @@ func putUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getUpstreamsHandler(w http.ResponseWriter, r *http.Request) {
-	oc := Upstreams.Clone()
+	oc := nsUpstreams.Clone()
 	resp := make([]UpstreamModel, 0, len(oc))
 	for k := range oc {
 		resp = append(resp, UpstreamModel{Upstream: k.String()})
@@ -59,7 +59,7 @@ func deleteUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	http_helpers.LogMsg(r, fmt.Sprintf("decoded params: upstream=%s", u))
 
-	_, ok := Upstreams.LoadAndDelete(u)
+	_, ok := nsUpstreams.LoadAndDelete(u)
 	if ok {
 		resp := UpstreamModel{Upstream: u.String()}
 		http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
@@ -94,7 +94,7 @@ func putOriginHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	Origins.Store(o, u)
+	originsToNS.Store(o, u)
 
 	resp := OriginModel{IP: o.String(), Upstream: u.String()}
 	http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))
@@ -103,7 +103,7 @@ func putOriginHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func getOriginsHandler(w http.ResponseWriter, r *http.Request) {
-	oc := Origins.Clone()
+	oc := originsToNS.Clone()
 	resp := make([]OriginModel, 0, len(oc))
 	for k, v := range oc {
 		resp = append(resp, OriginModel{IP: k.String(), Upstream: v.String()})
@@ -120,7 +120,7 @@ func deleteOriginHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	http_helpers.LogMsg(r, fmt.Sprintf("decoded params: origin=%s", o))
 
-	u, ok := Origins.LoadAndDelete(o)
+	u, ok := originsToNS.LoadAndDelete(o)
 	if ok {
 		resp := OriginModel{IP: o.String(), Upstream: u.String()}
 		http_helpers.LogMsg(r, fmt.Sprintf("returning response: %s", resp))

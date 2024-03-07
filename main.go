@@ -7,38 +7,51 @@ import (
 	"log"
 	"net/http"
 	"net/netip"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
+	"github.com/jellydator/ttlcache/v3"
 	"github.com/miekg/dns"
 )
 
 var (
-	addr    string
-	dnsAddr string
+	addr          string
+	dnsAddr       string
+	dnsRewriteTTL int
+	dnsCacheTTL   int
 )
 
 var (
-	Origins   *rwmutex_map.Map[netip.Addr, netip.AddrPort]
-	Upstreams *rwmutex_map.Map[netip.AddrPort, bool]
-	DNSClient *dns.Client
+	originsToNS *rwmutex_map.Map[netip.Addr, netip.AddrPort]
+	nsUpstreams *rwmutex_map.Map[netip.AddrPort, bool]
+	dnsClient   *dns.Client
+	dnsCache    *ttlcache.Cache[string, string]
 )
 
 func init() {
 	flag.StringVar(&addr, "listen", ":10080", "addr:port to listen on")
 	flag.StringVar(&dnsAddr, "listen-dns", ":10053", "addr:port to listen on")
+	flag.IntVar(&dnsRewriteTTL, "rewrite-ttl", 900, "rewrite records TTL (seconds), set zero to disable")
+	flag.IntVar(&dnsCacheTTL, "cache-ttl", 900, "internal cache TTL (seconds), set zero to disable")
 	flag.Parse()
 }
 
 func main() {
-	Origins = rwmutex_map.New[netip.Addr, netip.AddrPort]()
-	Upstreams = rwmutex_map.New[netip.AddrPort, bool]()
+	originsToNS = rwmutex_map.New[netip.Addr, netip.AddrPort]()
+	nsUpstreams = rwmutex_map.New[netip.AddrPort, bool]()
 
-	DNSClient = new(dns.Client)
+	if dnsCacheTTL > 0 {
+		dnsCache = ttlcache.New[string, string](
+			ttlcache.WithTTL[string, string](time.Duration(dnsCacheTTL) * time.Second),
+		)
+		go dnsCache.Start()
+	}
+
+	dnsClient = new(dns.Client)
 	// TODO: test with big req/resps coming from tcp (convert to udp+edns0?)
-	DNSClient.Net = "udp"
-
-	dns.HandleFunc(".", DNSReqHandler)
+	dnsClient.Net = "udp"
+	dns.HandleFunc(".", dnsReqHandler)
 
 	go func() {
 		// TODO: listen on tcp too

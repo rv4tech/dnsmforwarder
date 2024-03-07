@@ -2,7 +2,6 @@ package http_helpers
 
 import (
 	"context"
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
@@ -97,7 +96,7 @@ func RequestID(next http.Handler) http.Handler {
 func jsonMarshalSilent(v any) []byte {
 	b, err := json.Marshal(v)
 	if err != nil {
-		return []byte(fmt.Sprintf(`"marshal_err_base64: %s"`, base64.StdEncoding.EncodeToString([]byte(err.Error()))))
+		return []byte(err.Error())
 	}
 	return b
 }
