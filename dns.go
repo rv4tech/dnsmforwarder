@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"crypto/sha1"
 	"fmt"
 	"log"
 	"os"
@@ -29,16 +30,17 @@ func removeECSOption(msg *dns.Msg) {
 }
 
 func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
-	qHash := ""
+	sHash := server
 	for _, q := range req.Question {
-		qHash += q.String()
+		sHash += q.String()
 	}
+	qHash := sha1.Sum([]byte(sHash))
 
 	if dnsCache != nil {
-		m := dnsCache.Get(qHash, ttlcache.WithDisableTouchOnHit[string, string]())
+		m := dnsCache.Get(qHash, ttlcache.WithDisableTouchOnHit[[sha1.Size]byte, []byte]())
 		if m != nil {
 			resp := new(dns.Msg)
-			err := resp.Unpack([]byte(m.Value()))
+			err := resp.Unpack(m.Value())
 			if err == nil {
 				return resp, true, nil
 			}
@@ -51,10 +53,10 @@ func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
 	defer cancel()
 	resp, _, err := dnsClient.ExchangeContext(ctx, req, server)
 
-	if resp != nil && err == nil && dnsCache != nil {
+	if err == nil && resp != nil && dnsCache != nil {
 		m, err := resp.Pack()
-		if err == nil {
-			dnsCache.Set(qHash, string(m), 0)
+		if err == nil && m != nil {
+			dnsCache.Set(qHash, m, 0)
 		}
 	}
 	return resp, false, err

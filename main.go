@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/sha1"
 	"dnsmforwarder/http_helpers"
 	"dnsmforwarder/rwmutex_map"
 	"flag"
@@ -27,7 +28,7 @@ var (
 	originsToNS *rwmutex_map.Map[netip.Addr, netip.AddrPort]
 	nsUpstreams *rwmutex_map.Map[netip.AddrPort, bool]
 	dnsClient   *dns.Client
-	dnsCache    *ttlcache.Cache[string, string]
+	dnsCache    *ttlcache.Cache[[sha1.Size]byte, []byte]
 )
 
 func init() {
@@ -44,8 +45,8 @@ func main() {
 	nsUpstreams = rwmutex_map.New[netip.AddrPort, bool]()
 
 	if dnsCacheTTL > 0 {
-		dnsCache = ttlcache.New[string, string](
-			ttlcache.WithTTL[string, string](time.Duration(dnsCacheTTL) * time.Second),
+		dnsCache = ttlcache.New[[sha1.Size]byte, []byte](
+			ttlcache.WithTTL[[sha1.Size]byte, []byte](time.Duration(dnsCacheTTL) * time.Second),
 		)
 		go dnsCache.Start()
 	}
