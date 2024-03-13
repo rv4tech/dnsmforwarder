@@ -59,6 +59,7 @@ func deleteUpstreamHandler(w http.ResponseWriter, r *http.Request) {
 	}
 	http_helpers.LogMsg(r, fmt.Sprintf("decoded params: upstream=%s", u))
 
+	// don't delete from cache, this upstream can appear soon
 	_, ok := nsUpstreams.LoadAndDelete(u)
 	if ok {
 		resp := UpstreamModel{Upstream: u.String()}
