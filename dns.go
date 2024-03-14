@@ -59,7 +59,7 @@ func lookup(server string, online bool, req *dns.Msg) (*dns.Msg, bool, error) {
 	defer cancel()
 	resp, _, err := dnsClient.ExchangeContext(ctx, req, server)
 
-	if err == nil && resp != nil && dnsCache != nil {
+	if dnsCache != nil && err == nil && resp != nil && resp.Rcode == dns.RcodeSuccess {
 		m, err := resp.Pack()
 		if err == nil && m != nil {
 			dnsCache.Set(qHash, m, 0)
