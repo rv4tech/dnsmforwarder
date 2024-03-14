@@ -17,11 +17,12 @@ import (
 )
 
 var (
-	addr          string
-	dnsAddr       string
-	dnsTimeout    int
-	dnsRewriteTTL int
-	dnsCacheTTL   int
+	addr                 string
+	dnsAddr              string
+	dnsTimeout           int
+	dnsRewriteTTL        int
+	dnsCacheTTL          int
+	upstreamIgnoreStatus bool
 )
 
 var (
@@ -37,6 +38,10 @@ func init() {
 	flag.IntVar(&dnsRewriteTTL, "rewrite-ttl", 900, "rewrite records TTL (seconds), set zero to disable")
 	flag.IntVar(&dnsCacheTTL, "cache-ttl", 900, "internal cache TTL (seconds), set zero to disable")
 	flag.IntVar(&dnsTimeout, "upstream-timeout", 10, "upstream dns request timeout (seconds)")
+	flag.BoolVar(&upstreamIgnoreStatus, "ignore-upstream-status", false,
+		"try to send request to upstream even if it seems offline "+
+			"(no PUT /upstreams was called) and return real dns "+
+			"response (may be timeout) instead of ServerFailure")
 	flag.Parse()
 }
 

@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"crypto/sha1"
+	"errors"
 	"fmt"
 	"log"
 	"os"
@@ -29,7 +30,8 @@ func removeECSOption(msg *dns.Msg) {
 	}
 }
 
-func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
+// return: dns response, cached flag, error
+func lookup(server string, online bool, req *dns.Msg) (*dns.Msg, bool, error) {
 	sHash := server
 	for _, q := range req.Question {
 		sHash += q.String()
@@ -45,6 +47,10 @@ func lookup(server string, req *dns.Msg) (*dns.Msg, bool, error) {
 				return resp, true, nil
 			}
 		}
+	}
+
+	if !online && !upstreamIgnoreStatus {
+		return nil, false, errors.New("upstream offline, will not try to make request")
 	}
 
 	removeECSOption(req)
@@ -68,21 +74,17 @@ func dnsReqHandler(w dns.ResponseWriter, req *dns.Msg) {
 
 	origin := CanonAddrFromStringSilent(w.RemoteAddr().String())
 	upstream, _ := originsToNS.Load(CanonAddrFromStringSilent(w.RemoteAddr().String()))
-	_, hasUpstream := nsUpstreams.Load(upstream)
+	_, upstreamOnline := nsUpstreams.Load(upstream)
 
 	reqId := fmt.Sprintf("%v/%v/%v", req.Id, origin, upstream)
 	log.Printf("[dns.reqid=%v] received", reqId)
 
-	if !hasUpstream {
-		respErr = fmt.Errorf("no upstream found: '%v'", upstream)
-	} else {
-		switch req.Opcode {
-		case dns.OpcodeQuery, dns.OpcodeIQuery:
-			var cached bool
-			resp, cached, respErr = lookup(upstream.String(), req)
-			if cached {
-				log.Printf("[dns.reqid=%v] got cached response", reqId)
-			}
+	switch req.Opcode {
+	case dns.OpcodeQuery, dns.OpcodeIQuery:
+		var cached bool
+		resp, cached, respErr = lookup(upstream.String(), upstreamOnline, req)
+		if cached {
+			log.Printf("[dns.reqid=%v] got cached response", reqId)
 		}
 	}
 

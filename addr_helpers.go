@@ -11,7 +11,7 @@ func removePort(s string) string {
 		return s
 	}
 
-	s, _ = s[:i], s[i+1:]
+	s = s[:i]
 	return s
 }
 
