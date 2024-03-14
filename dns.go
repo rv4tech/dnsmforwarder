@@ -1,13 +1,11 @@
 package main
 
 import (
-	"context"
 	"crypto/sha1"
 	"errors"
 	"fmt"
 	"log"
 	"os"
-	"time"
 
 	"github.com/jellydator/ttlcache/v3"
 	"github.com/miekg/dns"
@@ -55,9 +53,7 @@ func lookup(server string, online bool, req *dns.Msg) (*dns.Msg, bool, error) {
 
 	removeECSOption(req)
 
-	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(dnsTimeout)*time.Second)
-	defer cancel()
-	resp, _, err := dnsClient.ExchangeContext(ctx, req, server)
+	resp, _, err := dnsClient.Exchange(req, server)
 
 	if dnsCache != nil && err == nil && resp != nil && resp.Rcode == dns.RcodeSuccess {
 		m, err := resp.Pack()

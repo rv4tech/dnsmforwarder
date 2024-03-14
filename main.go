@@ -22,6 +22,7 @@ var (
 	dnsTimeout           int
 	dnsRewriteTTL        int
 	dnsCacheTTL          int
+	dnsUDPBuffer         int
 	upstreamIgnoreStatus bool
 )
 
@@ -38,6 +39,7 @@ func init() {
 	flag.IntVar(&dnsRewriteTTL, "rewrite-ttl", 900, "rewrite records TTL (seconds), set zero to disable")
 	flag.IntVar(&dnsCacheTTL, "cache-ttl", 900, "internal cache TTL (seconds), set zero to disable")
 	flag.IntVar(&dnsTimeout, "upstream-timeout", 10, "upstream dns request timeout (seconds)")
+	flag.IntVar(&dnsUDPBuffer, "udp-buffer", 0, "udp buffer size for dns client")
 	flag.BoolVar(&upstreamIgnoreStatus, "ignore-upstream-status", false,
 		"try to send request to upstream even if it seems offline "+
 			"(no PUT /upstreams was called) and return real dns "+
@@ -57,8 +59,11 @@ func main() {
 	}
 
 	dnsClient = new(dns.Client)
-	// TODO: test with big req/resps coming from tcp (convert to udp+edns0?)
+	dnsClient.Timeout = time.Duration(dnsTimeout) * time.Second
 	dnsClient.Net = "udp"
+	if dnsUDPBuffer > 0 {
+		dnsClient.UDPSize = uint16(dnsUDPBuffer)
+	}
 	dns.HandleFunc(".", dnsReqHandler)
 
 	go func() {
