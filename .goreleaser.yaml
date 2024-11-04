@@ -24,7 +24,7 @@ builds:
 
 archives:
   - format: tar.gz
-    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os | toLower }}_{{ .Arch }}"
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os | tolower }}_{{ .Arch }}"
 
 changelog:
   sort: asc
